@@ -1,0 +1,13 @@
+# FACEIT Demo Auto Manager - Native Host Dependencies
+
+# Decompression
+zstandard>=0.18.0
+
+# Process management
+psutil>=5.9.0
+
+# Clipboard operations
+pyperclip>=1.8.2
+
+# Demo file parsing
+demoparser2>=0.39.0

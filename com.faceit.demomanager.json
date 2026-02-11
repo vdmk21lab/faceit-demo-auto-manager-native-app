@@ -1,0 +1,9 @@
+{
+  "name": "com.faceit.demomanager",
+  "description": "Native host for FACEIT demo manager",
+  "path": "C:\\Users\\VadimPrivate\\WebstormProjects\\faceit-demo-manager\\faceit-demo-auto-manager-host\\native_host.bat",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://cgoelhekpommhlicckmlmbabagbeobbf/"
+  ]
+}
