@@ -398,6 +398,11 @@ def main():
             # Send result back to extension
             send_message(result)
 
+        elif received_message.get("action") == "ping":
+            # Health check to verify native host is running
+            logging.info("Action 'ping' received - native host is alive")
+            send_message({"status": "success", "message": "pong"})
+
         else:
             # Handle any unknown actions
             logging.warning(f"Received unknown action: {received_message.get('action')}")
