@@ -1,5 +1,5 @@
 {
-  "cs2_replays_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Counter-Strike Global Offensive\\game\\csgo\\replays",
-  "cs2_csgo_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Counter-Strike Global Offensive\\game\\csgo",
-  "chrome_store_url": "https://chromewebstore.google.com/detail/your-extension-id-here"
+  "chrome_store_url": "https://chromewebstore.google.com/detail/your-extension-id-here",
+  "_comment": "cs2_csgo_path is OPTIONAL - only add it if auto-detection fails",
+  "_example_cs2_csgo_path": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Counter-Strike Global Offensive\\game\\csgo"
 }
