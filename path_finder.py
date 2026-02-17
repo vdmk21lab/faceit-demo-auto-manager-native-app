@@ -223,7 +223,18 @@ class PathConfigManager:
     """Manage user-configured paths with fallback to auto-detection."""
 
     def __init__(self, config_file: str = "config.json"):
-        self.config_file = Path(__file__).parent / config_file
+        # Use APPDATA for config file to avoid permission issues in Program Files
+        import sys
+        if getattr(sys, 'frozen', False):
+            # Running as compiled .exe - use APPDATA
+            appdata = Path(os.environ.get('APPDATA', Path.home() / 'AppData' / 'Roaming'))
+            config_dir = appdata / 'FACEIT Demo Auto Manager'
+            config_dir.mkdir(parents=True, exist_ok=True)
+            self.config_file = config_dir / config_file
+        else:
+            # Running as .py script - use same directory for development
+            self.config_file = Path(__file__).parent / config_file
+
         self.config = self._load_config()
         self.finder = SteamPathFinder()
 

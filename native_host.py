@@ -1,4 +1,5 @@
 import sys
+import os
 import json
 import struct
 import logging
@@ -40,10 +41,25 @@ def get_executable_dir():
         # Running as .py script
         return Path(__file__).parent
 
-# Set up logging to a file in the same directory as the script/exe.
+def get_log_file_path():
+    """
+    Get a user-writable path for the log file.
+    Uses %APPDATA% on Windows which is always writable by the current user.
+    """
+    if getattr(sys, 'frozen', False):
+        # Running as compiled .exe - use APPDATA for logs
+        appdata = Path(os.environ.get('APPDATA', Path.home() / 'AppData' / 'Roaming'))
+        log_dir = appdata / 'FACEIT Demo Auto Manager'
+        log_dir.mkdir(parents=True, exist_ok=True)
+        return log_dir / 'native_host.log'
+    else:
+        # Running as .py script - use same directory for development
+        return get_executable_dir() / 'native_host.log'
+
+# Set up logging to a user-writable location.
 # This is crucial for debugging because stdout is reserved for Chrome communication.
 logging.basicConfig(
-    filename=str(get_executable_dir() / 'native_host.log'),
+    filename=str(get_log_file_path()),
     level=logging.INFO,
     format='%(asctime)s - %(message)s',
     filemode='a',  # Append to the log file
@@ -57,12 +73,10 @@ def get_message():
     """
     raw_length = sys.stdin.buffer.read(4)
     if not raw_length:
-        logging.info("No message length received. Exiting.")
         sys.exit(0)
 
     message_length = struct.unpack('@I', raw_length)[0]
     message = sys.stdin.buffer.read(message_length).decode('utf-8')
-    logging.info(f"Received message of length {message_length}: {message}")
     return json.loads(message)
 
 def send_message(message_content):
@@ -72,8 +86,6 @@ def send_message(message_content):
     """
     encoded_content = json.dumps(message_content).encode('utf-8')
     encoded_length = struct.pack('@I', len(encoded_content))
-
-    logging.info(f"Sending response: {encoded_content.decode('utf-8')}")
 
     sys.stdout.buffer.write(encoded_length)
     sys.stdout.buffer.write(encoded_content)
@@ -91,19 +103,15 @@ def copy_playdemo_to_clipboard(demo_filename: str) -> dict:
     """
     playdemo_command = f"playdemo {demo_filename}"
 
-    logging.info(f"Copying command to clipboard: {playdemo_command}")
-
     try:
         if CLIPBOARD_AVAILABLE:
             pyperclip.copy(playdemo_command)
-            logging.info(f"Successfully copied to clipboard: {playdemo_command}")
             return {
                 "method": "clipboard",
                 "command": playdemo_command,
                 "message": f"Command copied to clipboard: {playdemo_command}"
             }
         else:
-            logging.warning("pyperclip not available")
             return {
                 "method": "manual",
                 "command": playdemo_command,
@@ -359,65 +367,47 @@ def main():
         received_message = get_message()
 
         # Check for the specific action requested by the Chrome extension
-        if received_message.get("action") == "processDemo":
+        action = received_message.get("action")
+
+        if action == "processDemo":
             file_path = received_message.get("filePath")
-            logging.info(f"Action 'processDemo' received for file: {file_path}")
-
-            # Process the demo file
+            logging.info(f"Processing demo: {file_path}")
             result = process_demo_file(file_path)
-
-            # Send result back to extension
             send_message(result)
 
-        elif received_message.get("action") == "getCS2Path":
-            # Allow extension to query for CS2 path
-            logging.info("Action 'getCS2Path' received")
+        elif action == "getCS2Path":
             config_manager = PathConfigManager()
             paths = config_manager.get_all_detected_paths()
             send_message({"status": "success", "paths": paths})
 
-        elif received_message.get("action") == "setCS2Path":
-            # Allow extension to set custom CS2 path
+        elif action == "setCS2Path":
             custom_path = received_message.get("path")
-            logging.info(f"Action 'setCS2Path' received with path: {custom_path}")
-
             config_manager = PathConfigManager()
             if config_manager.set_custom_path(custom_path):
                 send_message({"status": "success", "message": "Custom path set successfully"})
             else:
                 send_message({"status": "error", "message": "Invalid path or path does not exist"})
 
-        elif received_message.get("action") == "deleteDemo":
-            # Delete demo file from CS2 csgo folder
+        elif action == "deleteDemo":
             demo_filename = received_message.get("demoName")
-            logging.info(f"Action 'deleteDemo' received for file: {demo_filename}")
-
-            # Delete the demo file
             result = delete_demo_file(demo_filename)
-
-            # Send result back to extension
             send_message(result)
 
-        elif received_message.get("action") == "ping":
-            # Health check to verify native host is running
-            logging.info("Action 'ping' received - native host is alive")
+        elif action == "ping":
             send_message({"status": "success", "message": "pong"})
 
         else:
-            # Handle any unknown actions
-            logging.warning(f"Received unknown action: {received_message.get('action')}")
+            logging.warning(f"Unknown action: {action}")
             send_message({"status": "unknown_action", "received": received_message})
 
     except Exception as e:
         # Log any exceptions to the file for debugging
-        logging.error(f"An error occurred: {e}", exc_info=True)
+        logging.error(f"Error: {e}", exc_info=True)
         # Attempt to send an error response back to the extension if possible
         try:
             send_message({"status": "error", "message": str(e)})
         except Exception as send_e:
-            logging.error(f"Failed to send error message back to extension: {send_e}")
+            logging.error(f"Failed to send error response: {send_e}")
 
 if __name__ == '__main__':
-    logging.info("Native host script started.")
     main()
-    logging.info("Native host script finished.")
